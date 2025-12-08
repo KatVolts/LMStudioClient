@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 
 class LLMClient(ABC):
     @abstractmethod
@@ -7,16 +7,8 @@ class LLMClient(ABC):
               prompt: str, 
               history: Optional[List[Dict]] = None, 
               image_path: Optional[str] = None,
+              tools: Optional[List[Dict]] = None,
+              tool_choice: Optional[str] = "auto",
               temperature: float = 0.7, 
-              **kwargs) -> str:
-        """
-        Sends a prompt (and optional image) to the LLM.
-        
-        Args:
-            prompt (str): The user input text.
-            history (list): A list of message dictionaries. Updates in-place.
-            image_path (str): Path to a local image file (optional).
-            temperature (float): Controls randomness.
-            **kwargs: Arbitrary keyword arguments.
-        """
+              **kwargs) -> Union[str, any]:
         pass

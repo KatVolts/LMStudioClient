@@ -2,7 +2,6 @@ from openai import OpenAI
 from LLMClient import *
 import os
 import base64
-
 class LMStudioClient(LLMClient):
     def __init__(self, base_url="http://localhost:1234/v1", api_key="lm-studio"):
         self.client = OpenAI(base_url=base_url, api_key=api_key)
@@ -16,79 +15,94 @@ class LMStudioClient(LLMClient):
             return []
 
     def _encode_image(self, image_path):
-        """Helper to convert a local image file to a base64 string."""
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Image not found: {image_path}")
-            
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode('utf-8')
 
     def query(self, 
-              prompt: str, 
+              prompt: Optional[str] = None, 
               history: Optional[List[Dict]] = None, 
               image_path: Optional[str] = None,
+              tools: Optional[List[Dict]] = None,
+              tool_choice: Optional[str] = "auto",
               temperature: float = 0.7, 
               model_id=None, 
               system_instruction="You are a helpful assistant", 
               **kwargs):
         
-        # 1. Auto-select model if none provided
+        # 1. Auto-select model
         if not model_id:
             available = self.get_hosted_models()
             model_id = available[0] if available else "local-model"
 
-        # 2. Build the Content Payload
-        # If an image is provided, the 'content' becomes a list of dictionaries 
-        # (Text + Image) instead of a simple string.
-        if image_path:
-            base64_image = self._encode_image(image_path)
-            user_content = [
-                {"type": "text", "text": prompt},
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{base64_image}"
-                    }
-                }
-            ]
-        else:
-            # Standard text-only prompt
-            user_content = prompt
+        # 2. Build User Content (if prompt exists)
+        user_content = None
+        if prompt:
+            if image_path:
+                try:
+                    base64_image = self._encode_image(image_path)
+                    user_content = [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                    ]
+                except Exception as e:
+                    return f"Error encoding image: {e}"
+            else:
+                user_content = prompt
 
-        # 3. Construct Message Structure
+        # 3. Manage History
         if history is None:
-            messages = [
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": user_content}
-            ]
+            messages = [{"role": "system", "content": system_instruction}]
+            if user_content:
+                messages.append({"role": "user", "content": user_content})
         else:
             if not history:
                 history.append({"role": "system", "content": system_instruction})
             
-            # Append current turn
-            history.append({"role": "user", "content": user_content})
+            # ONLY append a user message if content was actually provided.
+            # This allows us to call query() just to get a completion after a tool result.
+            if user_content:
+                history.append({"role": "user", "content": user_content})
+            
             messages = history
 
         try:
-            # 4. API Call
+            # 4. Prepare Parameters
             params = {
                 "model": model_id,
                 "messages": messages,
                 "temperature": temperature,
             }
+            
+            if tools:
+                params["tools"] = tools
+                params["tool_choice"] = tool_choice
+
             params.update(kwargs)
 
+            # 5. API Call
             completion = self.client.chat.completions.create(**params)
-            response_text = completion.choices[0].message.content
+            message_obj = completion.choices[0].message
 
-            # 5. Update History
-            # Note: We append the response to history, but we do NOT clean up the 
-            # huge base64 image string from the 'user' message in history. 
-            # For long conversations, you might want to strip that out to save RAM.
-            if history is not None:
-                history.append({"role": "assistant", "content": response_text})
-
-            return response_text
+            # 6. Handle Response
+            if message_obj.tool_calls:
+                # Convert to dict to avoid serialization issues
+                msg_dict = message_obj.model_dump()
+                
+                # FIX: Ensure 'content' is not None (Jinja crash fix)
+                if msg_dict.get("content") is None:
+                    msg_dict["content"] = ""
+                
+                if history is not None:
+                    history.append(msg_dict)
+                
+                return message_obj.tool_calls
+            else:
+                response_text = message_obj.content
+                if history is not None:
+                    history.append({"role": "assistant", "content": response_text})
+                return response_text
 
         except Exception as e:
             return f"Error during query: {e}"
