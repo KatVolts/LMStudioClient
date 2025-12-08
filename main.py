@@ -8,41 +8,8 @@ from typing import List
 # Internal Imports
 from lm_studio_client import LMStudioClient
 from base_tool import BaseTool
+from tool_loader import ToolLoader
 
-def load_tools_from_directory(directory: str) -> List[BaseTool]:
-    """
-    Dynamically imports .py files from 'directory' and returns instances
-    of classes inheriting from BaseTool.
-    """
-    loaded_tools = []
-    
-    if not os.path.exists(directory):
-        print(f"Warning: Tool directory '{directory}' not found.")
-        return []
-
-    for filename in os.listdir(directory):
-        if filename.endswith(".py") and filename != "__init__.py":
-            file_path = os.path.join(directory, filename)
-            module_name = filename[:-3]
-
-            try:
-                # Load module definition
-                spec = importlib.util.spec_from_file_location(module_name, file_path)
-                if spec and spec.loader:
-                    module = importlib.util.module_from_spec(spec)
-                    sys.modules[module_name] = module
-                    spec.loader.exec_module(module)
-
-                    # Scan for Tool classes
-                    for name, obj in inspect.getmembers(module, inspect.isclass):
-                        # Must inherit BaseTool, but not BE BaseTool
-                        if issubclass(obj, BaseTool) and obj is not BaseTool:
-                            print(f"   -> Loaded: {name}")
-                            loaded_tools.append(obj())
-            except Exception as e:
-                print(f"Error loading {filename}: {e}")
-
-    return loaded_tools
 
 if __name__ == "__main__":
     # 1. Initialize Client
@@ -51,7 +18,8 @@ if __name__ == "__main__":
     
     # 2. Load Tools
     print("--- Initializing ---")
-    tools_list = load_tools_from_directory("tools")
+    TL = ToolLoader()
+    tools_list = TL.loadedTools
     
     # Map names to instances for execution
     tool_registry = {t.name: t for t in tools_list}
@@ -62,7 +30,7 @@ if __name__ == "__main__":
     print("-" * 30)
 
     # 3. Define the Prompt
-    user_input = "What is the weather in Tokyo?"
+    user_input = "What does (3 + 4) * 2 =?"
     print(f"User: {user_input}")
 
     # 4. First Query
