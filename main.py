@@ -1,20 +1,17 @@
 from LMStudioClient import *
-
 if __name__ == "__main__":
     client = LMStudioClient()
-    
-    # 1. High Temperature (Creative)
-    print("--- Creative Response (Temp 0.9) ---")
-    response_creative = client.query(
-        "Give me a unique name for a pet dragon.", 
-        temperature=0.9
-    )
-    print(response_creative)
 
-    # 2. Low Temperature (Deterministic/Precise)
-    print("\n--- Precise Response (Temp 0.1) ---")
-    response_precise = client.query(
-        "What is 2 + 2?", 
-        temperature=0.1
-    )
-    print(response_precise)
+    # NOTE: Ensure you have loaded a VISION model (like LLaVA or Pixtral) in LM Studio first!
+    print("Models:", client.get_hosted_models())
+    
+    # 1. Text Only Query
+    print("\n--- Text Query ---")
+    print(client.query("What is the capital of France?"))
+
+    #2. Image Query (Uncomment and set path to test)
+    image_file = "C:\\Users\\katly\\Pictures\\Katbeach.jpg"
+    if os.path.exists(image_file):
+        print(f"\n--- Image Query ({image_file}) ---")
+        response = client.query("Describe this image in detail.", image_path=image_file)
+        print(response)

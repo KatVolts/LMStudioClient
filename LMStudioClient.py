@@ -1,14 +1,13 @@
 from openai import OpenAI
 from LLMClient import *
+import os
+import base64
 
 class LMStudioClient(LLMClient):
     def __init__(self, base_url="http://localhost:1234/v1", api_key="lm-studio"):
         self.client = OpenAI(base_url=base_url, api_key=api_key)
 
     def get_hosted_models(self):
-        """
-        Retrieves a list of currently loaded models.
-        """
         try:
             response = self.client.models.list()
             return [model.id for model in response.data]
@@ -16,53 +15,76 @@ class LMStudioClient(LLMClient):
             print(f"Error fetching models: {e}")
             return []
 
+    def _encode_image(self, image_path):
+        """Helper to convert a local image file to a base64 string."""
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image not found: {image_path}")
+            
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode('utf-8')
+
     def query(self, 
               prompt: str, 
               history: Optional[List[Dict]] = None, 
+              image_path: Optional[str] = None,
               temperature: float = 0.7, 
               model_id=None, 
               system_instruction="You are a helpful assistant", 
               **kwargs):
-        """
-        Sends a query to LM Studio with history and temperature support.
-        """
-        # 1. Handle Model Selection
+        
+        # 1. Auto-select model if none provided
         if not model_id:
             available = self.get_hosted_models()
-            if available:
-                model_id = available[0]
-            else:
-                return "Error: No hosted models found."
+            model_id = available[0] if available else "local-model"
 
-        # 2. Construct Messages
-        if history is None:
-            # Stateless mode: create a temporary list
-            messages = [
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": prompt}
+        # 2. Build the Content Payload
+        # If an image is provided, the 'content' becomes a list of dictionaries 
+        # (Text + Image) instead of a simple string.
+        if image_path:
+            base64_image = self._encode_image(image_path)
+            user_content = [
+                {"type": "text", "text": prompt},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{base64_image}"
+                    }
+                }
             ]
         else:
-            # Stateful mode: maintain context
+            # Standard text-only prompt
+            user_content = prompt
+
+        # 3. Construct Message Structure
+        if history is None:
+            messages = [
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": user_content}
+            ]
+        else:
             if not history:
                 history.append({"role": "system", "content": system_instruction})
             
-            history.append({"role": "user", "content": prompt})
+            # Append current turn
+            history.append({"role": "user", "content": user_content})
             messages = history
 
         try:
-            # 3. API Call using the passed temperature
+            # 4. API Call
             params = {
                 "model": model_id,
                 "messages": messages,
                 "temperature": temperature,
             }
-            # Allow kwargs to override other params if necessary (e.g. max_tokens)
             params.update(kwargs)
 
             completion = self.client.chat.completions.create(**params)
             response_text = completion.choices[0].message.content
 
-            # 4. Update History
+            # 5. Update History
+            # Note: We append the response to history, but we do NOT clean up the 
+            # huge base64 image string from the 'user' message in history. 
+            # For long conversations, you might want to strip that out to save RAM.
             if history is not None:
                 history.append({"role": "assistant", "content": response_text})
 
