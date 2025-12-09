@@ -7,6 +7,10 @@ import importlib.util
 class ToolLoader():
     def __init__(self, base_url="http://localhost:1234/v1", api_key="lm-studio"):
         self.loadedTools = self.load_tools_from_directory("tools")
+        # Map names to instances for execution
+        self.tool_registry = {t.name: t for t in self.loadedTools}
+        # Create JSON definitions for the LLM
+        self.tool_definitions = [t.to_definition() for t in self.loadedTools]
 
     def load_tools_from_directory(self, directory: str) -> List[BaseTool]:
         """

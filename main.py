@@ -19,25 +19,16 @@ if __name__ == "__main__":
     # 2. Load Tools
     print("--- Initializing ---")
     TL = ToolLoader()
-    tools_list = TL.loadedTools
-    
-    # Map names to instances for execution
-    tool_registry = {t.name: t for t in tools_list}
-    # Create JSON definitions for the LLM
-    tool_definitions = [t.to_definition() for t in tools_list]
-
-    print(f"Tools available: {list(tool_registry.keys())}")
-    print("-" * 30)
-
+    print(f"Tools available: {list(TL.tool_registry.keys())}")
     # 3. Define the Prompt
-    user_input = "What does (3 + 4) * 2 =?"
+    user_input = "Hello. How are you?"
     print(f"User: {user_input}")
 
     # 4. First Query
     response = client.query(
         user_input, 
         history=history, 
-        tools=tool_definitions if tool_definitions else None
+        tools=TL.tool_definitions if TL.tool_definitions else None
     )
 
     # 5. Handle Tool Usage
@@ -47,15 +38,15 @@ if __name__ == "__main__":
         for tool_call in response:
             func_name = tool_call.function.name
             
-            if func_name in tool_registry:
+            if func_name in TL.tool_registry:
                 # Parse Args
                 args = json.loads(tool_call.function.arguments)
                 print(f"    Executing '{func_name}' with args: {args}")
                 
                 # Execute Logic
-                tool_instance = tool_registry[func_name]
+                tool_instance = TL.tool_registry[func_name]
                 result_json = tool_instance.execute(**args)
-                
+                print(f"Tool result {result_json}")
                 # Add Result to History
                 history.append({
                     "role": "tool",
@@ -70,7 +61,7 @@ if __name__ == "__main__":
         final_answer = client.query(
             prompt=None, 
             history=history,
-            tools=tool_definitions
+            tools=TL.tool_definitions
         )
         print(f"AI: {final_answer}")
     
