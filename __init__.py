@@ -1,0 +1,7 @@
+# This allows users to do: from lm_studio_client import LMStudioClient, BaseTool
+
+from .client import LMStudioClient
+from .tools import BaseTool
+from .base import BaseClient
+
+__all__ = ["LMStudioClient", "BaseTool", "BaseClient"]

@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lm-studio-client"
+version = "0.1.0"
+description = "A modular Python client for LM Studio"
+readme = "README.md"
+authors = [
+  { name = "Your Name", email = "your.email@example.com" },
+]
+license = { file = "LICENSE" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "requests",
+    "openai" 
+    # Add any other libraries from your requirements.txt here
+]
+requires-python = ">=3.8"
+
+[project.urls]
+"Homepage" = "https://github.com/KatVolts/LMStudioClient"
+"Bug Tracker" = "https://github.com/KatVolts/LMStudioClient/issues"
