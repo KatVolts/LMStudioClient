@@ -1,5 +1,6 @@
 README.md
 pyproject.toml
+lm_studio_client/__init__.py
 lm_studio_client/base.py
 lm_studio_client/client.py
 lm_studio_client/main.py

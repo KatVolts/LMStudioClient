@@ -2,6 +2,6 @@
 
 from .client import LMStudioClient
 from .tools import BaseTool
-from .base import BaseClient
+from .base import LLMClient
 
 __all__ = ["LMStudioClient", "BaseTool", "BaseClient"]

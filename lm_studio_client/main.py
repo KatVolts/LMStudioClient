@@ -7,8 +7,8 @@ from typing import List
 
 # Internal Imports
 from lm_studio_client import LMStudioClient
-from base_tool import BaseTool
-from tool_loader import ToolLoader
+from .tools import BaseTool
+from .tool_loader import ToolLoader
 
 
 if __name__ == "__main__":

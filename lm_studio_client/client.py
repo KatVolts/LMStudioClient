@@ -2,7 +2,7 @@ import base64
 import os
 from typing import List, Optional, Dict, Any, Union
 from openai import OpenAI
-from base_client import LLMClient
+from .base import LLMClient
 
 class LMStudioClient(LLMClient):
     def __init__(self, base_url="http://localhost:1234/v1", api_key="lm-studio"):
